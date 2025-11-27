@@ -52,10 +52,25 @@ GOOGLE_GENAI_USE_VERTEXAI=1
 GOOGLE_APPLICATION_CREDENTIALS=~/adk-agent-sa-key.json
 ```
 
-### 5. Run the agent
+## Quick Start
+
+### Activate venv and run
 ```bash
-python agent.py
+# Source the virtual environment
+source .venv/bin/activate
+
+# Build the ADK project
+adk build
+
+# Launch the web UI (port 8000)
+adk web --port 8000
+
+# In another terminal, activate venv and run the agent
+source .venv/bin/activate
+adk run my_agent
 ```
+
+The web UI will be available at `http://localhost:8000`.
 
 ## Troubleshooting
 
