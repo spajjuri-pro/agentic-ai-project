@@ -224,6 +224,5 @@ root_agent = Agent(
         collect_user_info,
         generate_weekly_workout_plan,
         collect_user_feedback,
-        get_exercises_by_goal_and_body_part,
     ],
 )
