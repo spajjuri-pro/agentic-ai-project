@@ -1,20 +1,99 @@
-"""ADK Agent - Exercise Planner Assistant with CSV-based Workout Suggestions."""
+"""ADK Sequential Agents - Exercise Planner with User Profile Database."""
 
 import csv
 import os
+import sqlite3
 from google.adk.agents.llm_agent import Agent
 
 
-# Path to the gym dataset
 DATASET_PATH = os.path.join(os.path.dirname(__file__), "megaGymDataset.csv")
+DB_PATH = os.path.join(os.path.dirname(__file__), "user_profiles.db")
+
+
+def init_database():
+    """Initialize SQLite database with user profiles table."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            age INTEGER NOT NULL,
+            height TEXT NOT NULL,
+            weight INTEGER NOT NULL,
+            exercise_goal TEXT NOT NULL,
+            injury TEXT DEFAULT 'None',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+def save_user_profile(
+    name: str, age: int, height: str, weight: int, exercise_goal: str, injury: str = "None"
+) -> dict:
+    """Save user profile to SQLite database."""
+    try:
+        init_database()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO user_profiles (name, age, height, weight, exercise_goal, injury)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (name, age, height, weight, exercise_goal, injury),
+        )
+        conn.commit()
+        profile_id = cursor.lastrowid
+        conn.close()
+        return {
+            "status": "success",
+            "profile_id": profile_id,
+            "message": f"✅ User profile saved! (ID: {profile_id}) Name: {name}, Age: {age}, Goal: {exercise_goal}",
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to save profile: {str(e)}"}
+
+
+def get_latest_user_profile() -> dict:
+    """Retrieve the most recently created user profile from the database."""
+    try:
+        init_database()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, name, age, height, weight, exercise_goal, injury
+            FROM user_profiles
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return {
+                "status": "success",
+                "profile_id": row[0],
+                "name": row[1],
+                "age": row[2],
+                "height": row[3],
+                "weight": row[4],
+                "exercise_goal": row[5],
+                "injury": row[6],
+            }
+        else:
+            return {"status": "error", "message": "No user profile found in database."}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to retrieve profile: {str(e)}"}
 
 
 def load_gym_dataset() -> list:
-    """Load exercises from the CSV dataset.
-    
-    Returns:
-        A list of dictionaries containing exercise data.
-    """
+    """Load exercises from the CSV dataset."""
     exercises = []
     try:
         with open(DATASET_PATH, "r", encoding="utf-8") as f:
@@ -29,28 +108,15 @@ def load_gym_dataset() -> list:
 def get_exercises_by_goal_and_body_part(
     goal: str, body_parts: list, difficulty: str = "Intermediate"
 ) -> dict:
-    """Filters exercises from the dataset based on goal and body parts.
-    
-    Args:
-        goal: Fitness goal ("Weight Loss", "Strength Building", or "Cardio").
-        body_parts: List of body parts to target (e.g., ["Abdominals", "Legs"]).
-        difficulty: Exercise difficulty level ("Beginner", "Intermediate", "Expert").
-        
-    Returns:
-        A dictionary with filtered exercises organized by body part.
-    """
+    """Filters exercises from the dataset based on goal and body parts."""
     exercises = load_gym_dataset()
     filtered = {}
-    
-    # Map goals to exercise types
     goal_type_map = {
         "Weight Loss": ["Cardio", "Plyometrics"],
         "Strength Building": ["Strength"],
         "Cardio": ["Cardio", "Plyometrics"],
     }
-    
     exercise_types = goal_type_map.get(goal, ["Strength"])
-    
     for body_part in body_parts:
         matching = [
             ex
@@ -61,7 +127,6 @@ def get_exercises_by_goal_and_body_part(
             and ex.get("Title")
         ]
         if matching:
-            # Take top 5 exercises per body part
             filtered[body_part] = [
                 {
                     "title": ex.get("Title", "Unknown"),
@@ -71,49 +136,28 @@ def get_exercises_by_goal_and_body_part(
                 }
                 for ex in matching[:5]
             ]
-    
     return filtered
 
 
-def generate_weekly_workout_plan(
-    goal: str,
-    user_age: int,
-    injury: str,
-    weight: int,
-    difficulty: str = "Intermediate",
-) -> dict:
-    """Generates a personalized weekly workout plan using the gym dataset.
-    
-    Args:
-        goal: Exercise goal ("Weight Loss", "Strength Building", or "Cardio").
-        user_age: User's age in years.
-        injury: Any current injuries or limitations.
-        weight: User's current weight in pounds.
-        difficulty: Exercise difficulty level ("Beginner", "Intermediate", "Expert").
-        
-    Returns:
-        A dictionary with a weekly workout plan.
-    """
-    # Determine target body parts based on goal
+def generate_weekly_workout_plan_from_profile(profile: dict) -> dict:
+    """Generates a weekly workout plan based on user profile from database."""
+    goal = profile.get("exercise_goal", "Strength Building")
+    user_age = profile.get("age", 30)
+    injury = profile.get("injury", "None")
+    weight = profile.get("weight", 170)
     goal_body_parts = {
         "Weight Loss": ["Abdominals", "Legs", "Back", "Chest"],
         "Strength Building": ["Back", "Chest", "Legs", "Abdominals"],
         "Cardio": ["Abdominals", "Legs", "Cardiovascular"],
     }
-    
     body_parts = goal_body_parts.get(goal, ["Abdominals", "Chest", "Back"])
-    
-    # Adjust difficulty based on age and current weight
-    if user_age < 18:
+    difficulty = "Intermediate"
+    if user_age < 18 or weight > 250 or user_age > 60:
         difficulty = "Beginner"
-    elif weight > 250:
-        difficulty = "Beginner"
-    
-    # Get exercises
     exercises_by_part = get_exercises_by_goal_and_body_part(goal, body_parts, difficulty)
-    
-    # Build weekly plan
     weekly_plan = {
+        "profile_id": profile.get("profile_id"),
+        "user_name": profile.get("name"),
         "goal": goal,
         "difficulty": difficulty,
         "frequency": {
@@ -128,134 +172,65 @@ def generate_weekly_workout_plan(
             },
             "Tuesday": {
                 "focus": list(exercises_by_part.keys())[1] if len(exercises_by_part) > 1 else "Rest",
-                "exercises": list(exercises_by_part.values())[1]
-                if len(exercises_by_part) > 1
-                else [],
+                "exercises": list(exercises_by_part.values())[1] if len(exercises_by_part) > 1 else [],
             },
             "Wednesday": {"focus": "Rest or Light Cardio", "exercises": []},
             "Thursday": {
                 "focus": list(exercises_by_part.keys())[2] if len(exercises_by_part) > 2 else "Rest",
-                "exercises": list(exercises_by_part.values())[2]
-                if len(exercises_by_part) > 2
-                else [],
+                "exercises": list(exercises_by_part.values())[2] if len(exercises_by_part) > 2 else [],
             },
             "Friday": {
                 "focus": list(exercises_by_part.keys())[3] if len(exercises_by_part) > 3 else "Rest",
-                "exercises": list(exercises_by_part.values())[3]
-                if len(exercises_by_part) > 3
-                else [],
+                "exercises": list(exercises_by_part.values())[3] if len(exercises_by_part) > 3 else [],
             },
             "Saturday": {"focus": "Active Recovery or Light Stretching", "exercises": []},
             "Sunday": {"focus": "Rest Day", "exercises": []},
         },
     }
-    
-    # Add injury modifications
     if injury and injury.lower() != "none":
         weekly_plan["injury_modifications"] = (
-            f"⚠️  Important: You have '{injury}'. Please avoid high-impact exercises "
-            "and consult with a physical therapist. Low-impact alternatives recommended."
+            f"⚠️  Important: {profile.get('name')}, you have '{injury}'. "
+            "Please avoid high-impact exercises and consult with a physical therapist. "
+            "Low-impact alternatives recommended."
         )
-    
     return weekly_plan
-
-
-def collect_user_info(
-    first_name: str, last_name: str, age: int, height: str, weight: int
-) -> dict:
-    """Collects basic personal information from the user for exercise planning.
-    
-    Args:
-        first_name: User's first name.
-        last_name: User's last name.
-        age: User's age in years.
-        height: User's height (e.g., "5'10\"", "180 cm").
-        weight: User's weight in pounds.
-        
-    Returns:
-        A dictionary with collected user information and confirmation message.
-    """
-    return {
-        "status": "success",
-        "first_name": first_name,
-        "last_name": last_name,
-        "age": age,
-        "height": height,
-        "weight": weight,
-        "message": f"✅ Profile created for {first_name} {last_name} ({age}yo, {height}, {weight}lbs). Now let's learn more about your fitness goals!",
-    }
-
-
-def collect_injury_and_goal(injury: str, fitness_goal: str) -> dict:
-    """Collects injury/limitations and fitness goal from the user.
-    
-    Args:
-        injury: Any current injuries or limitations (e.g., "None", "Knee pain", "Back strain").
-        fitness_goal: Primary fitness goal ("Weight Loss", "Strength Building", or "Cardio").
-        
-    Returns:
-        A dictionary with injury and goal information.
-    """
-    return {
-        "status": "success",
-        "injury": injury,
-        "fitness_goal": fitness_goal,
-        "message": f"Great! I'll focus on {fitness_goal} while being mindful of '{injury}'. Let me generate your personalized weekly plan.",
-    }
-
-
-def collect_user_feedback(liked_exercises: bool, feedback: str = "") -> dict:
-    """Collects user feedback on the exercise plan.
-    
-    Args:
-        liked_exercises: Whether the user liked the recommended exercises (True/False).
-        feedback: Optional detailed feedback from the user.
-        
-    Returns:
-        A dictionary confirming feedback has been recorded.
-    """
-    return {
-        "status": "success",
-        "liked_exercises": liked_exercises,
-        "feedback": feedback,
-        "message": "Thank you for your feedback! We'll use this to improve future recommendations.",
-    }
 
 
 root_agent = Agent(
     model="gemini-2.5-flash-lite",
     name="root_agent",
-    description="Exercise Planner - Creates personalized workout plans based on user profile, fitness goals, and a database of real exercises.",
+    description="Sequential Exercise Planner - Collects user profile and generates personalized workout plans.",
     instruction=(
-        "You are a helpful Exercise Planner assistant. Your role is to:\n\n"
-        "**STEP 1: COLLECT BASIC PERSONAL INFO**\n"
-        "Ask the user for their basic details using the 'collect_user_info' tool:\n"
-        "- First name, last name, age, height (e.g., 5'10\"), weight (lbs)\n"
-        "Present this as a simple form request.\n\n"
-        "**STEP 2: ASK ABOUT INJURIES & FITNESS GOAL**\n"
-        "After basic info is collected, ask about:\n"
-        "- Any injuries/limitations (or 'None')\n"
-        "- Primary fitness goal: Weight Loss, Strength Building, or Cardio\n"
-        "Then call 'collect_injury_and_goal' tool with these details.\n\n"
-        "**STEP 3: GENERATE WORKOUT PLAN**\n"
-        "Use 'generate_weekly_workout_plan' tool with:\n"
-        "- fitness_goal: from step 2\n"
-        "- user_age: from step 1\n"
-        "- injury: from step 2\n"
-        "- weight: from step 1\n"
-        "- difficulty: ask user or default to Intermediate\n"
-        "Present the weekly schedule with specific exercises, sets/reps, and rest days.\n\n"
-        "**STEP 4: COLLECT FEEDBACK**\n"
-        "Ask if they liked the recommended exercises, then use 'collect_user_feedback' tool.\n\n"
-        "**TONE:**\n"
+        "You are an Exercise Planner Assistant. Your role is to help users get personalized workout plans.\n\n"
+        "**WORKFLOW:**\n\n"
+        "**STEP 1: COLLECT USER PROFILE**\n"
+        "Ask the user for personal information:\n"
+        "- Full name (first and last)\n"
+        "- Age (in years)\n"
+        "- Height (e.g., 5'10\", 180 cm)\n"
+        "- Weight (in pounds)\n"
+        "- Exercise goal (Weight Loss, Strength Building, or Cardio)\n"
+        "- Any injuries or limitations (or 'None')\n\n"
+        "Use the 'save_user_profile' tool to save this information to the database.\n\n"
+        "**STEP 2: GENERATE PERSONALIZED PLAN**\n"
+        "After saving the profile:\n"
+        "1. Use 'get_latest_user_profile' to retrieve the saved profile from database\n"
+        "2. Use 'generate_weekly_workout_plan_from_profile' to create a personalized weekly plan\n"
+        "3. Present the weekly schedule clearly with each day, focus area, and specific exercises\n\n"
+        "**STEP 3: PROVIDE GUIDANCE**\n"
+        "- Recommend workout frequency based on their goal\n"
+        "- Provide safety tips and form guidance\n"
+        "- Remind users to consult a doctor if they have serious injuries\n"
+        "- Suggest rest days and recovery strategies\n\n"
+        "**IMPORTANT NOTES:**\n"
+        "- Always follow the sequence: FIRST collect and save profile, THEN retrieve and generate plan\n"
         "- Be friendly, encouraging, and supportive throughout\n"
-        "- Always remind users to consult a doctor if they have serious injuries\n"
-        "- Make it conversational and easy—not overwhelming\n"
+        "- Make it conversational and easy to understand\n"
+        "- Use the database tools to persist user information\n"
     ),
     tools=[
-        collect_user_info,
-        collect_injury_and_goal,
-        generate_weekly_workout_plan,
-        collect_user_feedback,
+        save_user_profile,
+        get_latest_user_profile,
+        generate_weekly_workout_plan_from_profile,
     ],
 )
