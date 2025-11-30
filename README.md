@@ -13,10 +13,15 @@ A demo agent using Google's ADK (Agent Development Kit) with Vertex AI.
 
 ### Run the agent
 
+**Make sure you're in the parent directory** (`/Users/spajjuri`), NOT inside the `my_agent` folder.
+
 **Option 1: Interactive CLI**
 ```bash
+# From /Users/spajjuri (parent directory)
+cd /Users/spajjuri
+
 # Source the virtual environment
-source .venv/bin/activate
+source my_agent/.venv/bin/activate
 
 # Run the agent interactively
 adk run my_agent
@@ -24,8 +29,11 @@ adk run my_agent
 
 **Option 2: Web UI (port 8000)**
 ```bash
+# From /Users/spajjuri (parent directory)
+cd /Users/spajjuri
+
 # Source the virtual environment
-source .venv/bin/activate
+source my_agent/.venv/bin/activate
 
 # Launch the web UI
 adk web --port 8000
@@ -35,14 +43,35 @@ Then open `http://localhost:8000` in your browser.
 
 ## Agent Features
 
-### Exercise Planner
-The agent collects user information and generates personalized weekly workout plans:
-- **User Input**: First name, last name, age, injury/limitations, height, weight
-- **Fitness Goals**: Weight Loss, Strength Building, Cardio (Stamina)
-- **Weekly Schedule**: Personalized routine organized by day with specific exercises
-- **Exercise Database**: Real exercises from `megaGymDataset.csv` (1000+ exercises)
-- **Injury Modifications**: Smart adjustments based on user limitations
-- **User Feedback**: Collects feedback after workout recommendations
+### Sequential Exercise Planner with Database
+
+The agent follows a structured workflow to create personalized workout plans:
+
+**Step 1: Collect & Save Profile**
+- Gathers user information: name, age, height, weight, exercise goal, injuries
+- Saves profile to local SQLite database (`user_profiles.db`)
+- Returns profile ID for reference
+
+**Step 2: Generate Personalized Plan**
+- Retrieves the saved profile from database
+- Generates personalized weekly workout plan based on:
+  - **Fitness Goals**: Weight Loss, Strength Building, or Cardio
+  - **User Profile**: Age, weight, height for difficulty adjustment
+  - **Exercise Database**: Real exercises from `megaGymDataset.csv` (1000+ exercises)
+  - **Injury Modifications**: Smart adjustments based on user limitations
+
+**Step 3: Present Weekly Schedule**
+- Monday-Sunday schedule organized by body part focus
+- Specific exercises with equipment needed
+- Difficulty level (Beginner, Intermediate, Advanced) based on age & weight
+- Rest day recommendations and recovery guidance
+
+### Database Architecture
+
+Local SQLite database stores user profiles:
+- `user_profiles.db` — User profiles with fitness goals and injury history
+- Table: `user_profiles` (id, name, age, height, weight, exercise_goal, injury, created_at)
+- Each user profile is persisted for future reference and plan updates
 
 ## File structure
 
