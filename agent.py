@@ -161,30 +161,46 @@ def generate_weekly_workout_plan(
 
 
 def collect_user_info(
-    first_name: str, last_name: str, age: int, injury: str, height: str, weight: int
+    first_name: str, last_name: str, age: int, height: str, weight: int
 ) -> dict:
-    """Collects personal information from the user for exercise planning.
+    """Collects basic personal information from the user for exercise planning.
     
     Args:
         first_name: User's first name.
         last_name: User's last name.
         age: User's age in years.
-        injury: Any current injuries or limitations (e.g., "None", "Knee pain", "Back strain").
         height: User's height (e.g., "5'10\"", "180 cm").
         weight: User's weight in pounds.
         
     Returns:
-        A dictionary with collected user information.
+        A dictionary with collected user information and confirmation message.
     """
     return {
         "status": "success",
         "first_name": first_name,
         "last_name": last_name,
         "age": age,
-        "injury": injury,
         "height": height,
         "weight": weight,
-        "message": f"User profile created for {first_name} {last_name}",
+        "message": f"✅ Profile created for {first_name} {last_name} ({age}yo, {height}, {weight}lbs). Now let's learn more about your fitness goals!",
+    }
+
+
+def collect_injury_and_goal(injury: str, fitness_goal: str) -> dict:
+    """Collects injury/limitations and fitness goal from the user.
+    
+    Args:
+        injury: Any current injuries or limitations (e.g., "None", "Knee pain", "Back strain").
+        fitness_goal: Primary fitness goal ("Weight Loss", "Strength Building", or "Cardio").
+        
+    Returns:
+        A dictionary with injury and goal information.
+    """
+    return {
+        "status": "success",
+        "injury": injury,
+        "fitness_goal": fitness_goal,
+        "message": f"Great! I'll focus on {fitness_goal} while being mindful of '{injury}'. Let me generate your personalized weekly plan.",
     }
 
 
@@ -211,17 +227,34 @@ root_agent = Agent(
     name="root_agent",
     description="Exercise Planner - Creates personalized workout plans based on user profile, fitness goals, and a database of real exercises.",
     instruction=(
-        "You are a helpful Exercise Planner assistant. Your role is to:\n"
-        "1. Collect user information (first name, last name, age, injury, height, weight)\n"
-        "2. Determine their fitness goal (Weight Loss, Strength Building, or Cardio)\n"
-        "3. Generate a personalized WEEKLY workout plan using the 'generate_weekly_workout_plan' tool\n"
-        "4. Present the weekly schedule with specific exercises from a professional gym database\n"
-        "5. Ask for feedback on the exercises using the 'collect_user_feedback' tool\n"
-        "Be friendly, encouraging, and always remind users to consult a doctor if they have injuries.\n"
-        "Format the weekly plan clearly with days, exercise names, and repetitions."
+        "You are a helpful Exercise Planner assistant. Your role is to:\n\n"
+        "**STEP 1: COLLECT BASIC PERSONAL INFO**\n"
+        "Ask the user for their basic details using the 'collect_user_info' tool:\n"
+        "- First name, last name, age, height (e.g., 5'10\"), weight (lbs)\n"
+        "Present this as a simple form request.\n\n"
+        "**STEP 2: ASK ABOUT INJURIES & FITNESS GOAL**\n"
+        "After basic info is collected, ask about:\n"
+        "- Any injuries/limitations (or 'None')\n"
+        "- Primary fitness goal: Weight Loss, Strength Building, or Cardio\n"
+        "Then call 'collect_injury_and_goal' tool with these details.\n\n"
+        "**STEP 3: GENERATE WORKOUT PLAN**\n"
+        "Use 'generate_weekly_workout_plan' tool with:\n"
+        "- fitness_goal: from step 2\n"
+        "- user_age: from step 1\n"
+        "- injury: from step 2\n"
+        "- weight: from step 1\n"
+        "- difficulty: ask user or default to Intermediate\n"
+        "Present the weekly schedule with specific exercises, sets/reps, and rest days.\n\n"
+        "**STEP 4: COLLECT FEEDBACK**\n"
+        "Ask if they liked the recommended exercises, then use 'collect_user_feedback' tool.\n\n"
+        "**TONE:**\n"
+        "- Be friendly, encouraging, and supportive throughout\n"
+        "- Always remind users to consult a doctor if they have serious injuries\n"
+        "- Make it conversational and easy—not overwhelming\n"
     ),
     tools=[
         collect_user_info,
+        collect_injury_and_goal,
         generate_weekly_workout_plan,
         collect_user_feedback,
     ],

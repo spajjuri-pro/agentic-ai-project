@@ -122,7 +122,7 @@ gcloud services enable compute.googleapis.com
 
 1. Complete setup steps above
 2. See [README.md](./README.md) for quick start commands
-3. Run `adk build && adk web --port 8000` to launch the web UI
+3. Run `adk web --port 8000` to launch the web UI
 4. Run `adk run my_agent` to execute the agent
 
 ## More info
