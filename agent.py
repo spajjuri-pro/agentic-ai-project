@@ -32,28 +32,141 @@ def init_database():
     conn.close()
 
 
+def collect_user_profile_form() -> dict:
+    """Interactive form to collect user profile details one field at a time.
+    
+    Returns a formatted form structure that the agent can use to collect input
+    from the user field by field.
+    """
+    return {
+        "status": "form_ready",
+        "form_title": "📋 User Profile Registration",
+        "fields": [
+            {
+                "field_name": "name",
+                "label": "Full Name",
+                "placeholder": "e.g., John Smith",
+                "type": "text",
+                "required": True,
+                "description": "Enter your first and last name"
+            },
+            {
+                "field_name": "age",
+                "label": "Age",
+                "placeholder": "e.g., 30",
+                "type": "number",
+                "min": 13,
+                "max": 120,
+                "required": True,
+                "description": "Enter your age in years"
+            },
+            {
+                "field_name": "height",
+                "label": "Height",
+                "placeholder": "e.g., 5'10\" or 180 cm",
+                "type": "text",
+                "required": True,
+                "description": "Enter your height (e.g., 5'10\", 6'2\", 180 cm, 170 cm)"
+            },
+            {
+                "field_name": "weight",
+                "label": "Weight",
+                "placeholder": "e.g., 180",
+                "type": "number",
+                "min": 50,
+                "max": 500,
+                "required": True,
+                "description": "Enter your weight in pounds"
+            },
+            {
+                "field_name": "exercise_goal",
+                "label": "Fitness Goal",
+                "type": "select",
+                "required": True,
+                "description": "What is your primary fitness goal?",
+                "options": ["Weight Loss", "Strength Building", "Cardio"]
+            },
+            {
+                "field_name": "injury",
+                "label": "Injuries or Limitations",
+                "placeholder": "e.g., None, Knee pain, Back strain",
+                "type": "text",
+                "required": False,
+                "description": "Any current injuries or physical limitations? (Leave empty for None)"
+            }
+        ],
+        "message": "Please fill out your profile information below. This helps us create a personalized workout plan just for you!"
+    }
+
+
 def save_user_profile(
     name: str, age: int, height: str, weight: int, exercise_goal: str, injury: str = "None"
 ) -> dict:
-    """Save user profile to SQLite database."""
+    """Save user profile to SQLite database.
+    
+    Args:
+        name: User's full name.
+        age: User's age in years.
+        height: User's height (e.g., "5'10\"", "180 cm").
+        weight: User's weight in pounds.
+        exercise_goal: Exercise goal ("Weight Loss", "Strength Building", or "Cardio").
+        injury: Any injuries or limitations (default: "None").
+        
+    Returns:
+        A dictionary with save status and user profile ID.
+    """
     try:
         init_database()
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+        
+        # Validate inputs
+        if not name or name.strip() == "":
+            return {"status": "error", "message": "Name cannot be empty"}
+        if age < 13 or age > 120:
+            return {"status": "error", "message": "Age must be between 13 and 120"}
+        if not height or height.strip() == "":
+            return {"status": "error", "message": "Height cannot be empty"}
+        if weight < 50 or weight > 500:
+            return {"status": "error", "message": "Weight must be between 50 and 500 lbs"}
+        if exercise_goal not in ["Weight Loss", "Strength Building", "Cardio"]:
+            return {"status": "error", "message": "Invalid exercise goal"}
+        
+        # Use "None" if injury is empty
+        if not injury or injury.lower().strip() in ["", "none", "n/a"]:
+            injury = "None"
+        
         cursor.execute(
             """
             INSERT INTO user_profiles (name, age, height, weight, exercise_goal, injury)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (name, age, height, weight, exercise_goal, injury),
+            (name.strip(), age, height.strip(), weight, exercise_goal, injury.strip()),
         )
         conn.commit()
         profile_id = cursor.lastrowid
         conn.close()
+        
         return {
             "status": "success",
             "profile_id": profile_id,
-            "message": f"✅ User profile saved! (ID: {profile_id}) Name: {name}, Age: {age}, Goal: {exercise_goal}",
+            "name": name.strip(),
+            "age": age,
+            "height": height.strip(),
+            "weight": weight,
+            "exercise_goal": exercise_goal,
+            "injury": injury,
+            "message": (
+                f"✅ Profile Saved Successfully!\n\n"
+                f"**Profile ID:** {profile_id}\n"
+                f"**Name:** {name.strip()}\n"
+                f"**Age:** {age} years\n"
+                f"**Height:** {height.strip()}\n"
+                f"**Weight:** {weight} lbs\n"
+                f"**Goal:** {exercise_goal}\n"
+                f"**Injuries:** {injury}\n\n"
+                f"Now generating your personalized workout plan..."
+            ),
         }
     except Exception as e:
         return {"status": "error", "message": f"Failed to save profile: {str(e)}"}
@@ -199,36 +312,45 @@ def generate_weekly_workout_plan_from_profile(profile: dict) -> dict:
 root_agent = Agent(
     model="gemini-2.5-flash-lite",
     name="root_agent",
-    description="Sequential Exercise Planner - Collects user profile and generates personalized workout plans.",
+    description="Sequential Exercise Planner - Collects user profile via interactive form and generates personalized workout plans.",
     instruction=(
         "You are an Exercise Planner Assistant. Your role is to help users get personalized workout plans.\n\n"
         "**WORKFLOW:**\n\n"
-        "**STEP 1: COLLECT USER PROFILE**\n"
-        "Ask the user for personal information:\n"
-        "- Full name (first and last)\n"
-        "- Age (in years)\n"
+        "**STEP 1: DISPLAY USER PROFILE FORM**\n"
+        "Use the 'collect_user_profile_form' tool to display an interactive form structure.\n"
+        "Then collect the user's responses for each field:\n"
+        "- Full Name\n"
+        "- Age (13-120 years)\n"
         "- Height (e.g., 5'10\", 180 cm)\n"
-        "- Weight (in pounds)\n"
-        "- Exercise goal (Weight Loss, Strength Building, or Cardio)\n"
-        "- Any injuries or limitations (or 'None')\n\n"
-        "Use the 'save_user_profile' tool to save this information to the database.\n\n"
-        "**STEP 2: GENERATE PERSONALIZED PLAN**\n"
+        "- Weight (50-500 lbs)\n"
+        "- Fitness Goal (Weight Loss, Strength Building, or Cardio)\n"
+        "- Injuries/Limitations (optional, enter 'None' if no injuries)\n\n"
+        "Present each field one at a time in a clear, friendly manner.\n"
+        "Wait for the user to provide each input before moving to the next.\n\n"
+        "**STEP 2: SAVE THE PROFILE**\n"
+        "Once you have collected all fields, call 'save_user_profile' with all the information.\n"
+        "The profile will be saved to the database with validation.\n"
+        "Confirm successful save with the profile ID and summary.\n\n"
+        "**STEP 3: GENERATE PERSONALIZED PLAN**\n"
         "After saving the profile:\n"
         "1. Use 'get_latest_user_profile' to retrieve the saved profile from database\n"
         "2. Use 'generate_weekly_workout_plan_from_profile' to create a personalized weekly plan\n"
         "3. Present the weekly schedule clearly with each day, focus area, and specific exercises\n\n"
-        "**STEP 3: PROVIDE GUIDANCE**\n"
+        "**STEP 4: PROVIDE GUIDANCE**\n"
         "- Recommend workout frequency based on their goal\n"
         "- Provide safety tips and form guidance\n"
         "- Remind users to consult a doctor if they have serious injuries\n"
         "- Suggest rest days and recovery strategies\n\n"
         "**IMPORTANT NOTES:**\n"
-        "- Always follow the sequence: FIRST collect and save profile, THEN retrieve and generate plan\n"
+        "- Display the form structure first to set expectations\n"
+        "- Collect one field at a time - ask clearly and wait for response\n"
+        "- Validate inputs (age 13-120, weight 50-500, valid goals)\n"
+        "- Always follow the sequence: form → collect → save → retrieve → generate → guidance\n"
         "- Be friendly, encouraging, and supportive throughout\n"
         "- Make it conversational and easy to understand\n"
-        "- Use the database tools to persist user information\n"
     ),
     tools=[
+        collect_user_profile_form,
         save_user_profile,
         get_latest_user_profile,
         generate_weekly_workout_plan_from_profile,
