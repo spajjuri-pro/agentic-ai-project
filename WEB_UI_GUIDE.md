@@ -3,11 +3,14 @@
 ## Starting the Web Server
 
 ```bash
-cd /Users/spajjuri
-/Users/spajjuri/my_agent/.venv/bin/adk web --port 8000
+cd /Users/spajjuri/my_agent
+source .venv/bin/activate
+adk web --port 8000
 ```
 
 Then open: **http://localhost:8000**
+
+The agent will automatically be discovered and displayed as "my_agent_app" in the Web UI.
 
 ## How the Agent Works
 
@@ -92,7 +95,7 @@ Tuesday: Legs & Glutes
 2. **Verify tools are loaded:**
    ```bash
    cd /Users/spajjuri/my_agent
-   python3 -c "from agent import root_agent; print(f'Tools: {[t.__name__ for t in root_agent.tools]}')"
+   python3 -c "from my_agent_app import root_agent; print(f'Tools: {[t.__name__ for t in root_agent.tools]}')"
    ```
    
    Should output:
@@ -107,10 +110,12 @@ Tuesday: Legs & Glutes
 You can also test the form directly without the Web UI:
 
 ```python
-from agent import collect_user_profile_form
+from my_agent_app import root_agent
 import json
 
-form = collect_user_profile_form()
+# Get the collect_user_profile_form tool
+form_tool = [t for t in root_agent.tools if hasattr(t, '__name__') and t.__name__ == 'collect_user_profile_form'][0]
+form = form_tool()
 print(json.dumps(form, indent=2))
 ```
 

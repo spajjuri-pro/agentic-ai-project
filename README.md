@@ -75,10 +75,21 @@ Local SQLite database stores user profiles:
 
 ## File structure
 
-- `agent.py` — Exercise Planner agent with CSV filtering tools
-- `megaGymDataset.csv` — Database of 1000+ gym exercises (body parts, equipment, difficulty)
-- `.env.example` — Template for environment variables (commit this, not `.env`)
-- `.env` — Local credentials (do NOT commit)
+```
+my_agent/
+├── my_agent_app/           ← Agent package (ADK discovery point)
+│   ├── __init__.py         ← Exports root_agent
+│   ├── agent.py            ← Exercise Planner agent with CSV filtering tools
+│   ├── megaGymDataset.csv  ← Database of 1000+ gym exercises
+│   └── user_profiles.db    ← SQLite database for user profiles
+├── __init__.py             ← Root package exports
+├── .env                    ← Local credentials (do NOT commit)
+├── .env.example            ← Template for environment variables
+├── README.md               ← This file
+└── README-SETUP.md         ← Detailed setup instructions
+```
+
+**Why the subdirectory?** ADK discovers agents by looking for package directories (folders with `__init__.py`). The `my_agent_app/` folder is where the agent lives and can be discovered by the Web UI.
 
 ## Example Usage
 

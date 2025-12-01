@@ -21,6 +21,7 @@ cd agentic-ai-project
 ### 2. Create a virtual environment
 
 ```bash
+cd my_agent
 python3 -m venv .venv
 source .venv/bin/activate
 ```
@@ -112,18 +113,29 @@ gcloud services enable compute.googleapis.com
 
 ## File structure
 
-- `agent.py` — Main agent definition
-- `__init__.py` — Package initialization
-- `.env.example` — Template for environment variables (safe to commit)
-- `.env` — Local credentials (NOT committed, in `.gitignore`)
-- `.gitignore` — Excludes credentials, cache, and venv
+```
+my_agent/
+├── my_agent_app/           ← Agent package (ADK discovery point)
+│   ├── __init__.py         ← Exports root_agent
+│   ├── agent.py            ← Main agent definition
+│   ├── megaGymDataset.csv  ← Exercise database
+│   └── user_profiles.db    ← SQLite database for user profiles
+├── __init__.py             ← Root package exports
+├── .env                    ← Local credentials (NOT committed)
+├── .env.example            ← Template for environment variables
+├── README.md               ← Quick start guide
+└── README-SETUP.md         ← This detailed setup guide
+```
+
+**Key Change**: Agent is now in `my_agent_app/` subdirectory because ADK discovers agents by looking for package directories (folders with `__init__.py`), not individual files.
 
 ## Next steps
 
 1. Complete setup steps above
-2. See [README.md](./README.md) for quick start commands
-3. Run `adk web --port 8000` to launch the web UI
-4. Run `adk run my_agent` to execute the agent
+2. Make sure you're in `/Users/spajjuri/my_agent` directory
+3. See [README.md](./README.md) for quick start commands
+4. Run `adk web --port 8000` to launch the web UI (agent will be auto-discovered)
+5. Run `adk run my_agent.my_agent_app` to execute the agent from CLI
 
 ## More info
 
