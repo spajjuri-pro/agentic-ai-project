@@ -4,6 +4,24 @@ A demo agent using Google's ADK (Agent Development Kit) with Vertex AI.
 
 **AI Exercise Planner** — Personalized workout routines based on user profile and fitness goals, powered by a gym exercise database.
 
+---
+
+## 📖 Documentation Guide
+
+**👤 For End Users (Using the Application):**
+
+- **[USER_README.md](./USER_README.md)** — Complete user guide with examples and FAQs
+- **[WEB_UI_GUIDE.md](./WEB_UI_GUIDE.md)** — How to use the web interface
+
+**👨‍💻 For Developers (Setting Up & Maintaining):**
+
+- **[README-SETUP.md](./README-SETUP.md)** — Installation, configuration, and troubleshooting
+- **[AGENT_DISCOVERY_FIX.md](./AGENT_DISCOVERY_FIX.md)** — Technical explanation of agent discovery
+- **[DOCUMENTATION_UPDATE_SUMMARY.md](./DOCUMENTATION_UPDATE_SUMMARY.md)** — Project changes overview
+- **[DOCUMENTATION_CHECKLIST.md](./DOCUMENTATION_CHECKLIST.md)** — Development verification
+
+---
+
 ## Quick Start
 
 ### Prerequisites

@@ -48,3 +48,11 @@ service-account-*.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Developer-only documentation (not needed for end users)
+# These files explain technical decisions, debugging, and internal processes
+AGENT_DISCOVERY_FIX.md
+DOCUMENTATION_UPDATE_SUMMARY.md
+DOCUMENTATION_CHECKLIST.md
+WEB_UI_GUIDE.md
+

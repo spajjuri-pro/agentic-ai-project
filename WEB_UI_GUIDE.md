@@ -1,5 +1,7 @@
 # Web UI Usage Guide
 
+**📖 For End Users & Developers** — How to use the Exercise Planner through the Web UI.
+
 ## Starting the Web Server
 
 ```bash

@@ -1,5 +1,7 @@
 # Setup Guide
 
+**⚠️ For Developers Only** — This guide is for setting up the development environment. End users should see [README.md](./README.md) and [WEB_UI_GUIDE.md](./WEB_UI_GUIDE.md) instead.
+
 Complete setup instructions for the ADK Agent project.
 
 ## Prerequisites
